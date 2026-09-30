@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8">
+<title>Randvieh Langzeit-Wette</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0d0620;--violet:#b026ff;--glow:#7a1fd6;--lilac:#b9a8ff;--ja:#c77dff;--nein:#ff5fa8;--silver:#ecebf7}
+*{box-sizing:border-box}
+html,body{margin:0;background:transparent;font-family:'Press Start 2P','Courier New',monospace;color:var(--lilac)}
+body.panel{background:var(--ink);padding:10px}
+#card{width:640px;margin:16px;padding:22px 26px 20px;background:linear-gradient(180deg,rgba(18,6,42,.93),rgba(10,3,26,.96));
+ border:3px solid var(--violet);border-radius:14px;box-shadow:0 0 18px var(--violet),0 0 60px rgba(122,31,214,.55),inset 0 0 30px rgba(122,31,214,.35);display:none;position:relative;overflow:hidden}
+body.panel #card{margin:0 auto 12px;width:100%}
+#card::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.22) 0 1px,transparent 1px 3px)}
+.prompt{font-size:10px;letter-spacing:1px;opacity:.75}
+.prompt i{font-style:normal;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+h1{font-size:15px;line-height:1.55;color:var(--silver);margin:12px 0 16px;text-shadow:0 0 10px var(--violet)}
+#time{font-size:34px;color:#fff;text-shadow:0 0 6px #fff,0 0 22px var(--violet),0 0 40px var(--violet);letter-spacing:2px}
+#st{display:inline-block;margin:12px 0 4px;padding:6px 10px;font-size:10px;background:var(--violet);color:#fff;border-radius:4px}
+#st.locked{background:#ff9f1c}#st.cancelled{background:#666}#st.resolved{background:#2ee59d;color:#062}
+.meta{font-size:10px;margin:2px 0 14px}
+.bar{height:14px;display:flex;border:2px solid var(--glow);border-radius:3px;overflow:hidden;background:#1a0a38}
+.bar div{transition:width .8s}#bj{background:var(--ja);box-shadow:0 0 12px var(--ja)}#bn{background:var(--nein);box-shadow:0 0 12px var(--nein)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:16px}
+.col{padding:12px;border:2px solid;border-radius:8px}
+.col.j{border-color:var(--ja)}.col.n{border-color:var(--nein)}
+.col.win{box-shadow:0 0 22px currentColor;background:rgba(255,255,255,.07)}
+.col b{display:block;font-size:16px;margin-bottom:8px}.j b{color:var(--ja)}.n b{color:var(--nein)}
+.col p{font-size:10px;margin:0 0 10px;line-height:1.6;color:var(--silver)}
+.col li{font-size:9px;line-height:2;list-style:none;display:flex;justify-content:space-between;gap:6px;color:var(--lilac)}
+.col ul{margin:0;padding:0}.col li span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.board{margin-top:16px;padding-top:12px;border-top:2px dashed var(--glow)}
+.board b{font-size:10px;color:var(--silver);display:block;margin-bottom:6px}
+.board ul{margin:0;padding:0}.board li{font-size:9px;line-height:2;list-style:none;display:flex;justify-content:space-between}
+#ctl{display:none;margin-top:6px}body.panel #ctl{display:block}
+#ctl button,#ctl input{font:10px 'Press Start 2P',monospace;padding:9px 10px;margin:0 6px 8px 0;border-radius:4px;border:2px solid var(--violet);background:#1a0a38;color:var(--silver)}
+#ctl button{cursor:pointer}#ctl button:hover{background:var(--violet)}#ctl button:focus-visible{outline:2px solid #fff}
+#ctl .danger{border-color:var(--nein)}#ctl input{width:100%}
+@media (prefers-reduced-motion:reduce){.prompt i{animation:none}.bar div{transition:none}}
+</style></head>
+<body>
+<div id="card">
+  <div class="prompt">LOAD"WETTE",8,1<i>█</i></div>
+  <h1 id="title"></h1>
+  <div id="time">--</div>
+  <div><span id="st"></span></div>
+  <div class="meta" id="meta"></div>
+  <div class="bar"><div id="bj" style="width:50%"></div><div id="bn" style="width:50%"></div></div>
+  <div class="cols">
+    <div class="col j" id="cj"><b>JA</b><p id="pj"></p><ul id="lj"></ul></div>
+    <div class="col n" id="cn"><b>NEIN</b><p id="pn"></p><ul id="ln"></ul></div>
+  </div>
+  <div class="board"><b>Bestenliste (Siege / Niederlagen)</b><ul id="lb"></ul></div>
+</div>
+
+<div id="ctl">
+  <input id="sTitle" placeholder="Titel, z.B. Baumhaus fertig?" aria-label="Titel">
+  <input id="sDur" value="3d" style="width:90px" aria-label="Dauer (m/h/d)">
+  <button onclick="cmd('start '+sDur.value+' '+sTitle.value)">Wette starten</button><br>
+  <button onclick="cmd('ende ja')">JA gewinnt</button>
+  <button onclick="cmd('ende nein')">NEIN gewinnt</button>
+  <button class="danger" onclick="if(confirm(t('Abbrechen und alle Punkte zurückgeben?','Cancel and refund all points?')))cmd('abbruch')">Abbruch + Refund</button>
+  <button onclick="cmd('reset')">Overlay leeren</button>
+  <button class="danger" onclick="if(confirm(t('Bestenliste löschen?','Clear leaderboard?')))cmd('boardreset')">Bestenliste löschen</button>
+</div>
+
+<script>
+/* URL-Parameter: ?host=127.0.0.1&port=8080  ?panel=1 (OBS Custom Browser Dock)  ?demo=1 (Vorschau) */
+const q=new URLSearchParams(location.search), $=id=>document.getElementById(id);
+if(q.get('panel'))document.body.classList.add('panel');
+let S=null, ws;
+const fmt=n=>n.toLocaleString('de-DE');
+const L=q.get('lang')==='en',t=(d,e)=>L?e:d; // ?lang=en for English UI
+
+function connect(){
+  ws=new WebSocket(`ws://${q.get('host')||'127.0.0.1'}:${q.get('port')||8080}/`);
+  ws.onopen=()=>{
+    // Streamer.bot liefert CPH.WebsocketBroadcastJson nur an Clients, die "General.Custom" abonniert haben
+    ws.send(JSON.stringify({request:'Subscribe',id:'sub',events:{General:['Custom']}}));
+    cmd('sync');
+  };
+  ws.onmessage=e=>{try{const m=JSON.parse(e.data),d=(m.data&&m.data.lb)?m.data:m;if(d.lb){S=d;draw()}}catch(_){}};
+  ws.onclose=()=>setTimeout(connect,3000);
+}
+function cmd(t){ if(ws&&ws.readyState===1) ws.send(JSON.stringify({request:'DoAction',id:'lb'+Date.now(),action:{name:'LB'},args:{rawInput:t}})); }
+
+function list(ul,top){ul.innerHTML='';top.forEach((t,i)=>{const li=document.createElement('li'),a=document.createElement('span'),b=document.createElement('span');a.textContent=(i+1)+'. '+t.n;b.textContent=fmt(t.a);li.append(a,b);ul.append(li)})}
+
+function draw(){
+  const c=$('card');
+  if(!S||S.status==='none'){c.style.display=q.get('panel')?'block':'none';if(!S||S.status==='none'){$('title').textContent=t('Keine Wette aktiv','No bet active');$('time').textContent='--';$('st').textContent='';$('meta').textContent='';}return}
+  c.style.display='block';
+  const left=S.endsAt-Date.now(), open=S.status==='open', expired=open&&left<=0;
+  $('title').textContent=S.title;
+  const st=expired?'locked':S.status;
+  $('st').className=st;
+  $('st').textContent={open:t('OFFEN – Einsätze möglich','OPEN – place your bets'),locked:t('GESPERRT – wartet auf Auflösung','LOCKED – waiting for result'),cancelled:t('ABGEBROCHEN – Punkte zurück','CANCELLED – points refunded'),resolved:t('BEENDET – '+String(S.winner).toUpperCase()+' gewinnt','ENDED – '+(S.winner==='ja'?'YES':'NO')+' wins')}[st];
+  if(open&&left>0){const s=Math.floor(left/1000),d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60),x=s%60,p=v=>String(v).padStart(2,'0');
+    $('time').textContent=(d?d+t('T ','d '):'')+`${p(h)}:${p(m)}:${p(x)}`}
+  else $('time').textContent=st==='resolved'||st==='cancelled'?t('ENDE','END'):'00:00:00';
+  const tot=S.ja.sum+S.nein.sum, pj=tot?S.ja.sum/tot*100:50;
+  $('bj').style.width=pj+'%';$('bn').style.width=(100-pj)+'%';
+  $('meta').textContent=`${S.ja.n+S.nein.n} ${t('Teilnehmer','participants')} · ${fmt(tot)} ${t('Punkte im Topf','points in the pot')}`;
+  const qf=o=>o.q?o.q.toLocaleString('de-DE',{minimumFractionDigits:2})+'×':'–';
+  $('pj').innerHTML=`${+S.ja.n} ${t('Wetter','bettors')}<br>${fmt(S.ja.sum)} ${t('Pkt','pts')}<br>${t('Quote','Odds')} ${qf(S.ja)}`;
+  $('pn').innerHTML=`${+S.nein.n} ${t('Wetter','bettors')}<br>${fmt(S.nein.sum)} ${t('Pkt','pts')}<br>${t('Quote','Odds')} ${qf(S.nein)}`;
+  const bl=$('lb');bl.innerHTML='';(S.board||[]).forEach((t,i)=>{const li=document.createElement('li'),a=document.createElement('span'),b=document.createElement('span');a.textContent=(i+1)+'. '+t.n;b.textContent=t.w+' / '+t.l;li.append(a,b);bl.append(li)});
+  list($('lj'),S.ja.top);list($('ln'),S.nein.top);
+  $('cj').classList.toggle('win',S.winner==='ja');$('cn').classList.toggle('win',S.winner==='nein');
+}
+setInterval(()=>S&&draw(),1000);
+
+if(L){const M={'Bestenliste (Siege / Niederlagen)':'Leaderboard (wins / losses)','Wette starten':'Start bet','JA gewinnt':'YES wins','NEIN gewinnt':'NO wins','Abbruch + Refund':'Cancel + refund','Overlay leeren':'Clear overlay','Bestenliste löschen':'Clear leaderboard','JA':'YES','NEIN':'NO'};
+  document.querySelectorAll('button,.board b,.col b').forEach(e=>{const m=M[e.textContent.trim()];if(m)e.textContent=m});
+  sTitle.placeholder='Title, e.g. Treehouse done?';sDur.title='Duration (m/h/d)'}
+draw();
+if(q.get('demo')){S={lb:1,title:t('Wird der Streamer das Baumhaus in 3 Tagen fertig bauen?','Will the streamer finish the treehouse in 3 days?'),status:'open',endsAt:Date.now()+2.6*864e5,winner:'',
+ ja:{n:14,sum:18400,q:1.43,top:[{n:'Klaus',a:5000},{n:'Mira',a:3200},{n:'Bodo',a:2000}]},board:[{n:'Klaus',w:5,l:1},{n:'Mira',w:4,l:2},{n:'Tilo',w:3,l:3}],nein:{n:9,sum:7900,q:3.33,top:[{n:'Hexe42',a:3000},{n:'Tilo',a:1500},{n:'Nudel',a:900}]}};draw()}
+else connect();
+</script>
+</body></html>
